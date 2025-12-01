@@ -1,11 +1,9 @@
 #include <iostream>
 #include <string>
 #include <fstream>
-#include <cstdlib>
 #include <cmath>
-#include <unistd.h>
 
-const int           DIAL_MOD    = 99;
+const int DIAL_MOD = 99;
 
 enum DIRECT { LEFT, RIGHT, NONE };
 
@@ -47,22 +45,38 @@ int main(int argc, char **argv)
             if (pos - dist < 0)
             {
                 if (pos - (dist % (DIAL_MOD + 1)) < 0)
+                {
+                    if (pos != 0)
+                        passwd += 1 + (dist / (DIAL_MOD + 1));
+                    else
+                        passwd += dist / (DIAL_MOD + 1);
                     pos = (DIAL_MOD + 1) - abs(pos - (dist % (DIAL_MOD + 1)));
+                }
                 else
+                {
+                    if (pos - (dist % (DIAL_MOD + 1)) == 0)
+                        ++passwd;
+                    passwd += dist / (DIAL_MOD + 1);
                     pos = pos - (dist % (DIAL_MOD + 1));
+                }
             }
             else
+            {
+                if (pos - dist == 0)
+                    ++passwd;
                 pos -= dist;
+            }
         }
         else if (dir == RIGHT)
         {
             if (pos + dist > DIAL_MOD)
+            {
+                passwd += (pos + dist) / (DIAL_MOD + 1);
                 pos = (pos + dist) % (DIAL_MOD + 1);
+            }
             else
                 pos += dist;
         }
-        if (pos == 0)
-            ++passwd;
     }
     std::cout << "Password is: " << passwd << std::endl;
     in.close();
