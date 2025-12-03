@@ -77,7 +77,7 @@ int main(int argc, char **argv)
 				std::cout << "\tmax_pos2 = " << max_pos2 << std::endl;
 				res = (10 * digits[max_pos2]) + digits[max_pos];
 			}
-			// It's still the first founded maximum
+			// It's still the first found maximum
 			// but it may have duplicates, if it has
 			// at least one duplicate it will be located
 			// somewhere on the right, in case if it hasn't
