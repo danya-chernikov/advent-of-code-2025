@@ -29,8 +29,14 @@ const std::string delim = " ";
 using u_ll = unsigned long long;
 using matrix = std::vector< std::vector<int> >;
 
-void    print_matrix(matrix m);
-matrix  mul_matrix(matrix &a, matrix &b);
+int dac, fft;
+
+void dfs(matrix &graph,
+         int v,
+         int v_end,
+         std::vector<bool> &visited,
+         std::vector< std::vector<int> > &paths,
+         size_t &path_cnt);
 
 int main(int argc, char **argv)
 {
@@ -94,8 +100,10 @@ int main(int argc, char **argv)
 
     int m_w = vid;
     int m_h = m_w;
-    int start = vertices["you"];
+    int start = vertices["srv"];
     int end = vertices["out"];
+    dac = vertices["dac"];
+    fft = vertices["fft"];
     matrix m(m_w, std::vector<int>(m_h, 0));
 
     // Let's open the file again
@@ -127,6 +135,12 @@ int main(int argc, char **argv)
                 break;
             line.erase(0, pos + delim.length());
             int vert_num = vertices[vert];
+            /*if (fvert_num == fft || vert_num == fft || fvert_num == dac || vert_num == dac)
+            {
+                std::cout << "m[fvert_num][vert_num] = " << "m[" << fvert_num << "]["
+                    << vert_num << "] = 1\n";
+                sleep(1);
+            }*/
             m[fvert_num][vert_num] = 1; // We have oriented graph!
             priv = vert;
             ++vert_cnt;
@@ -135,87 +149,100 @@ int main(int argc, char **argv)
     }
     in2.close();
 
-    u_ll total_path = m[start][end];
-    matrix res = m;
-    std::cout << 1 << " : " << total_path << std::endl;
-    for (int exp_i = 2; exp_i < vid; ++exp_i)
+    /*for (int ri = 0; ri < m_h; ++ri)
     {
-        std::cout << exp_i << " : ";
-        res = mul_matrix(res, m);
-        std::cout << res[start][end] << std::endl;
-        total_path += res[start][end];
+        for (int ci = 0; ci < m_w; ++ci)
+            std::cout << m[ri][ci];
+        std::cout << std::endl;
+    }*/
+
+    u_ll paths_num = 0;
+    std::vector<bool> visited(m_w, 0);
+    std::vector< std::vector<int> > paths(32000);
+
+    path_cnt = 0;
+    dfs(m, start, end, visited, paths, path_cnt);
+
+    std::cout << "path_cnt = " << path_cnt << std::endl;
+    std::cout << std::endl;
+    for (size_t pi = 0; pi < path_cnt; ++pi)
+    {
+        for (size_t vi = 0; vi < paths[pi].size(); ++vi)
+            std::cout << paths[pi][vi] << " ";
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+
+    for (size_t pi = 0; pi < path_cnt; ++pi)
+    {
+        bool f_dac = false;
+        bool f_fft = false;
+        for (size_t vi = 0; vi < paths[pi].size(); ++vi)
+        {
+            if (paths[pi][vi] == dac)
+                f_dac = true;
+            else if (paths[pi][vi] == fft)
+                f_fft = true;
+        }
+        if (f_dac && f_fft)
+            ++paths_num;
     }
 
-    std::cout << total_path << " paths lead from you to out\n";
+    std::cout << paths_num << " paths visit both dac and fft\n";
 
     return 0;
 }
 
-void print_matrix(matrix m)
+/*void dfs(matrix &graph,
+         int v,
+         int v_end,
+         std::vector<bool> &visited,
+         std::vector< std::vector<int> > &paths,
+         size_t &path_cnt)
 {
-    std::cout << std::endl;
-    for (int ri = 0; ri < m.size(); ++ri)
+    if (v == v_end)
     {
-        for (int ci = 0; ci < m[ri].size(); ++ci)
-            std::cout << m[ri][ci] << " ";
-        std::cout << std::endl;
+        //visited[v] = false; ?
+        // Just copy all content of paths[path_cnt] in paths[path_cnt + 1]
+        // exept the last vertex visited
+        for (size_t i = 0; i < paths[path_cnt].size(); ++i)
+            paths[path_cnt + 1].push_back(paths[path_cnt][i]);
+        ++path_cnt;
+        return;
     }
-    std::cout << std::endl;
-}
+    if (v==dac||v==fft)
+    {
+        std::cout << "FFFFFFF!\n";
+        exit(1);
+    }
+    visited[v] = true;
+    paths[path_cnt].push_back(v);
+    for (size_t to = 0; to < graph.size(); ++to)
+    {
+        if (graph[v][to] && !visited[to])
+            dfs(graph, to, v_end, visited, paths, path_cnt);
+    }
+    visited[v] = false;
+    paths[path_cnt].pop_back();
+}*/
 
-/* Multiplies two square matrices a and b */
-matrix mul_matrix(matrix &a, matrix &b)
+void dfs(matrix &graph,
+         int v,
+         int v_end,
+         std::vector<bool> &visited,
+         std::vector< std::vector<int> > &paths,
+         size_t &path_cnt)
 {
-    matrix res(b[0].size(), std::vector<int>(a.size(), 0));
-
-    for (size_t b_ci_res = 0; b_ci_res < b[0].size(); ++b_ci_res)
-        for (size_t b_ri_res = 0; b_ri_res < b.size(); ++b_ri_res)
-            for (size_t b_ri = 0, a_ci = 0; b_ri < b.size(); ++b_ri, ++a_ci)
-                res[b_ri_res][b_ci_res] += a[b_ri_res][a_ci] * b[b_ri][b_ci_res];
-    return res;
+    std::cout << v << std::endl;
+    if (v==dac||v==fft)
+    {
+        std::cout << "FFFFFFF!\n";
+        exit(1);
+    }
+    visited[v] = true;
+    for (size_t to = 0; to < graph.size(); ++to)
+    {
+        if (graph[v][to] && !visited[to])
+            dfs(graph, to, v_end, visited, paths, path_cnt);
+    }
 }
-
-/*matrix a = {
-    { -2, 1 },
-    {  5, 4 }
-};
-matrix b = {
-    { 3 },
-    { 1 }
-};
-
-matrix a = {
-    {  2, -3 },
-    {  4, -6 }
-};
-matrix b = {
-    { 9, -6 },
-    { 6, -4 }
-};
-
-matrix a = {
-    {  5, 8, -4 },
-    {  6, 9, -5 },
-    {  4, 7, -3 }
-};
-matrix b = {
-    { 3,  2, 5 },
-    { 4, -1, 3 },
-    { 9,  6, 5 }
-}
-
-int start = 1;
-int end = 10;
-matrix m = {
-    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },//0
-    { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },//1
-    { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },//2
-    { 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 },//3
-    { 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0 },//4
-    { 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0 },//5
-    { 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0 },//6
-    { 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0 },//7
-    { 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0 },//8
-    { 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0 },//9
-    { 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0 }//10
-};*/
