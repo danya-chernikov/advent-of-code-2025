@@ -32,7 +32,8 @@
 #include <unistd.h>
 
 const std::string   delim       = ",";
-constexpr int       ITER_NUM    = 10;
+constexpr int       ITER_NUM    = 1000;
+using u_ll = unsigned long long;
 
 class Junction_Box
 {
@@ -99,10 +100,10 @@ bool boxes_connected(std::vector< std::list<Junction_Box> > &circuits,
     bool f_id1 = false; // Flag marking if first box was found
     bool f_id2 = false;
 
-    for (int ci = 0; ci < circuits.size(); ++ci) // circuit index
+    for (size_t ci = 0; ci < circuits.size(); ++ci) // circuit index
     {
         for (std::list<Junction_Box>::iterator ni = circuits[ci].begin();
-            ni != circuits[ci].end(); ++ni) // node iterator
+             ni != circuits[ci].end(); ++ni) // node iterator
         {
             if (box_id1 == (*ni).gid() && !f_id2) // box_id1 was found first
                 f_id1 = true;
@@ -125,10 +126,10 @@ bool boxes_connected(std::vector< std::list<Junction_Box> > &circuits,
 int get_circuit_index(std::vector< std::list<Junction_Box> > &circuits,
                       int box_id)
 {
-    for (int ci = 0; ci < circuits.size(); ++ci) // circuit index
+    for (size_t ci = 0; ci < circuits.size(); ++ci) // Circuit index
     {
         for (std::list<Junction_Box>::iterator ni = circuits[ci].begin();
-            ni != circuits[ci].end(); ++ni) // node iterator
+             ni != circuits[ci].end(); ++ni) // Node iterator
         {
             if ((*ni).gid() == box_id)
                 return ci;
@@ -151,6 +152,8 @@ int main(int argc, char **argv)
         std::cerr << "Coundn't open input.txt\n";
         return 1;
     }
+
+    auto start = std::chrono::high_resolution_clock::now();
 
     std::vector<Junction_Box> boxes;
     int box_cnt = 0;
@@ -179,19 +182,25 @@ int main(int argc, char **argv)
 
     // At first, we consider each box as a circuit consited of one element
     // so let's populate our junction boxes into `circuits`
-    for (int bi = 0; bi < b.size(); ++bi)
+    for (size_t bi = 0; bi < b.size(); ++bi)
     {
         std::list<Junction_Box> list;
         list.push_front(b[bi]);
         circuits.push_back(list);
     }
 
+    int conn_cnt = 0;
     // The main loop
-    for (int it_ind = 0; it_ind < ITER_NUM; ++it_ind)
+    while (circuits.size() > 1) // Until all boxes will be connected
     {
+        if (conn_cnt == ITER_NUM - 1)
+        {
+            std::cout << "Ten connections have been made\n";
+            break;
+        }
 
         std::cout << "Boxes:\n";
-        for (int bi = 0; bi < boxes.size(); ++bi)
+        for (size_t bi = 0; bi < boxes.size(); ++bi)
         {
             std::cout << boxes[bi].gid() << '\t'
                       << boxes[bi].gx()  << '\t'
@@ -209,13 +218,17 @@ int main(int argc, char **argv)
          * find its closest pair box and add the distance between
          * them into `min_dists` and then search for the lowest
          * value in `min_dists` */
-        for (int i = 0; i < b.size(); ++i)
+        for (size_t i = 0; i < b.size(); ++i)
         {
             // Let's count distances between b[i] and all the others
+            // Let's count all distances between a box from a circuit
+            // and all other boxes from all other circuits except but
+            // not including this box's neighbours
             std::vector<Distance> dists;
-            for (int j = 0; j < b.size(); ++j)
+            // Let's get the circuit index of b[i]
+            for (size_t j = 0; j < b.size(); ++j)
             {
-                if (i != j)
+                if (i != j && !boxes_connected(circuits, b[i].gid(), b[j].gid()))
                 {
                     double d = dist(b[i].gx(), b[i].gy(), b[i].gz(),
                                     b[j].gx(), b[j].gy(), b[j].gz());
@@ -228,7 +241,7 @@ int main(int argc, char **argv)
 
             // Let's find the minimum distance in `dists`
             int min_ind = 0;
-            for (int di = 1; di < dists.size(); ++di)
+            for (size_t di = 1; di < dists.size(); ++di)
             {
                 if (dists[di].get_dist() < dists[min_ind].get_dist())
                     min_ind = di;
@@ -238,14 +251,14 @@ int main(int argc, char **argv)
             int     box_id2 = dists[min_ind].get_id2();
             std::cout << "min_dist = "  << min_dist
                       << " between "    << box_id1 << ": ["
-                                        << b[box_id1].gx() << ", "
-                                        << b[box_id1].gy() << ", "
-                                        << b[box_id1].gz() << "] "
+                      << b[box_id1].gx() << ", "
+                      << b[box_id1].gy() << ", "
+                      << b[box_id1].gz() << "] "
                       << " and "        << box_id2 << ": ["
-                                        << b[box_id2].gx() << ", "
-                                        << b[box_id2].gy() << ", "
-                                        << b[box_id2].gz() << "]\n";
-            
+                      << b[box_id2].gx() << ", "
+                      << b[box_id2].gy() << ", "
+                      << b[box_id2].gz() << "]\n";
+
             // First, let's check if box_id1 or box_id2 are already part of a circuit
             // if they're not (box_id1 is part of one circuit and box_id2 is part of another.
             // Of course, these circuits may contain more than one element)
@@ -255,15 +268,15 @@ int main(int argc, char **argv)
                 std::cout << box_id1 << " and " << box_id2 << " are not connected\n";
                 // If box_id1 and box_id2 belong to a different circuits
                 // Let's add this minimum into `min_dists`
-                min_dists.push_back(dists[min_ind]); 
+                min_dists.push_back(dists[min_ind]);
             }
             std::cout << std::endl;
-            
+
         } // for (int i = 0; i < b.size(); ++i)
 
         std::cout << std::endl;
         std::cout << "min_dists[]:\n";
-        for (int i = 0; i < min_dists.size(); ++i)
+        for (size_t i = 0; i < min_dists.size(); ++i)
         {
             std::cout << min_dists[i].get_id1() << '\t'
                       << min_dists[i].get_id2() << '\t'
@@ -273,7 +286,7 @@ int main(int argc, char **argv)
 
         // Now let's find the lowest distance in `min_dists`
         int min_ind = 0;
-        for (int di = 1; di < min_dists.size(); ++di)
+        for (size_t di = 1; di < min_dists.size(); ++di)
         {
             if (min_dists[di].get_dist() < min_dists[min_ind].get_dist())
                 min_ind = di;
@@ -293,20 +306,21 @@ int main(int argc, char **argv)
                   << b[box_id2].gz() << "] "
                   << " with distance of " << min_dist << "\n\n";
 
-        /* And only now are we going to connect these 
-         * two boxes (or just one of them) to another
-         * circuit.
-         *
-         * THE QUESTION IS: How do we determine which
-         * circuit each found box should be added to?
-         *
-         * THE ANSWER IS: We know that our boxes belong to
-         * different circuits. This means the box located
-         * in the smaller circuit should be added to the
-         * larger one, because we wanna save resources.
-         * BUT WHAT IF CIRCUITS HAVE THE SAME SIZE?
-         * */
-        
+        /* If both boxes are located in circuits of size 1, we simply
+          * form a new circuit by adding one to the other and eliminating
+          * the circuit from which we extracted a box.
+          *
+          * If one box has size 1 and the other has a size greater than 1,
+          * we add the smaller circuit to the larger one, eliminating the
+          * smaller circuit.
+          *
+          * If both boxes belong to circuits of size greater than 1, we unite
+          * them into a single circuit by adding the smaller circuit to the
+          * larger one and then eliminating the smaller circuit.
+          *
+          * If both boxes are of equal size, it does not matter which circuit
+          * is added to which. */
+
         // Let's find the first box, what is the index of
         // the circuit that contains it?
         // 'box_1_cind' means 'circuit index of the first box'
@@ -333,59 +347,48 @@ int main(int argc, char **argv)
         std::cout << "Circuit size of the second box is: "
                   << circuits[box_2_cind].size() << std::endl;
 
-        // One of the boxes is gonna visit another and left its own house (circuit).
-        // We just move the box from a lower circuit (that has less elements).
-
-        // If first box circuit is equal or larger than the second
-        if (circuits[box_1_cind].size() >= circuits[box_2_cind].size())
+        if (box_1_cind == box_2_cind)
         {
-            // Let's move the box with ID `box_id2` from its circuit to
-            // the circuit of the box with ID `box_id1'
-            // We have to somehow extract the second box from its circuit
-            for (std::list<Junction_Box>::iterator ni = circuits[box_2_cind].begin();
-                ni != circuits[box_2_cind].end(); ++ni) // node iterator
-            {
-                if ((*ni).gid() == box_id2)
-                {
-                    circuits[box_1_cind].push_front(*ni);
-                    circuits[box_2_cind].erase(ni);
-                    if (circuits[box_2_cind].size() == 0)
-                        circuits.erase(circuits.begin() + box_2_cind);
-                    break;
-                }
-            }
+            std::cout << "Alert! Boxes are in the same circuit! Do nothing\n";
         }
-        else // circuits[box_1_cind].size() < circuits[box_2_cind].size()
+        else // Otherwise let's make a connection
         {
-            // Let's move the box with ID `box_id1` from its circuit to
-            // the circuit of the box with ID `box_id2'
-            for (std::list<Junction_Box>::iterator ni = circuits[box_1_cind].begin();
-                ni != circuits[box_1_cind].end(); ++ni) // node iterator
+            ++conn_cnt;
+            // If first box circuit is equal or larger than the second
+            if (circuits[box_1_cind].size() >= circuits[box_2_cind].size())
             {
-                if ((*ni).gid() == box_id1)
-                {
-                    circuits[box_2_cind].push_front(*ni);
-                    circuits[box_1_cind].erase(ni);
-                    if (circuits[box_1_cind].size() == 0)
-                        circuits.erase(circuits.begin() + box_1_cind);
-                    break;
-                }
+                /* Let's merge these two circuits. We need to move all elements
+                 * from the circuit that contains the box with index `box_2_cind`
+                 * into the circuit that contains the box with index `box_1_cind`,
+                 * and then remove the circuit from which the elements were moved */
+                for (std::list<Junction_Box>::iterator ni = circuits[box_2_cind].begin();
+                     ni != circuits[box_2_cind].end(); ++ni) // Node iterator
+                    circuits[box_1_cind].push_back(*ni);
+                circuits.erase(circuits.begin() + box_2_cind);
+            }
+            else // circuits[box_1_cind].size() < circuits[box_2_cind].size()
+            {
+                // Doing the same but for another circuit
+                for (std::list<Junction_Box>::iterator ni = circuits[box_1_cind].begin();
+                     ni != circuits[box_1_cind].end(); ++ni) // Node iterator
+                    circuits[box_2_cind].push_back(*ni);
+                circuits.erase(circuits.begin() + box_1_cind);
             }
         }
 
-        // Now let's print our newly formed circuits 
+        // Now let's print our newly formed circuits
         std::cout << std::endl;
-        for (int ci = 0; ci < circuits.size(); ++ci) // circuit index
+        for (size_t ci = 0; ci < circuits.size(); ++ci) // circuit index
         {
             std::cout << ci << ": ";
             for (std::list<Junction_Box>::iterator ni = circuits[ci].begin();
-                ni != circuits[ci].end(); ++ni) // node iterator
+                 ni != circuits[ci].end(); ++ni) // node iterator
             {
                 std::cout << "[ " << (*ni).gid()
-                          << ": " << (*ni).gx()
-                          << ", " << (*ni).gy()
-                          << ", " << (*ni).gz()
-                          << " ] <-> ";
+                << ": " << (*ni).gx()
+                << ", " << (*ni).gy()
+                << ", " << (*ni).gz()
+                << " ] <-> ";
             }
             std::cout << std::endl;
         }
@@ -398,26 +401,32 @@ int main(int argc, char **argv)
 
     // Finally let's multiple the sizes of the three largest circuits
     // Let's create a vector containing sizes of each circuit
-    std::vector<int> sizes(circuits.size());
-    for (int ci = 0; ci < circuits.size(); ++ci)
+    std::vector<size_t> sizes(circuits.size());
+    for (size_t ci = 0; ci < circuits.size(); ++ci)
         sizes[ci] = circuits[ci].size();
 
     // Let's sort this array
     std::sort(sizes.begin(), sizes.end());
 
     std::cout << "Sorted circuit sizes:\n";
-    for (int si = 0; si < sizes.size(); ++si)
+    for (size_t si = 0; si < sizes.size(); ++si)
         std::cout << sizes[si] << std::endl;
     std::cout << std::endl;
 
-    int mul_res = sizes[sizes.size() - 1]
-                * sizes[sizes.size() - 2]
-                * sizes[sizes.size() - 3];
+    u_ll mul_res = sizes[sizes.size() - 1]
+                  * sizes[sizes.size() - 2]
+                  * sizes[sizes.size() - 3];
 
     std::cout << "Multiplied together the sizes of the"
               << " three largest circuits produced after "
               << ITER_NUM << " iterations of our algorithm"
-              " we got " << mul_res << std::endl;
+                             " we got " << mul_res << std::endl;
+
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+
+    std::cout << "Time taken by function: "
+         << duration.count() << " microseconds" << std::endl;
 
     in.close();
     return 0;
